@@ -1,63 +1,102 @@
+
+## R Programming (Assignment 2)
 ## A pair of functions that cache the inverse of a matrix
 ## Creates a special matrix object that can cache its inverse
-makeCacheMatrix <- function( m = matrix() ) {
 
-	## Initialize the inverse property
-    i <- NULL
+## makeCacheMatrix creates a list with four separate functions
+## set() allows the user to create a matrix
+## get() retrieves the stored matrix and prints
+## setInverse() allows the user (or other function) to set the inverse
+## getInverse() allows the inverse to be printed from the cache
 
-    ## Method to set the matrix
-    set <- function( matrix ) {
-            m <<- matrix
-            i <<- NULL
+## Matrix inverse cache functions 
+##
+## When using more memory is cheaper than waiting on the CPU.
+
+##########
+# makeCacheMatrix(x = matrix())
+# Description:
+# Create a list of functions and an envrionment to store a matrix and its inverse.
+
+# Arguments:
+# x: a squre numeric or complex matrix (optional, can be set later with set())
+
+# Returns: 
+# list of functions (set, get, set.inverse, get.inverse)
+
+# Usage:
+# x <- replicate(2000,rnorm(2000))
+# z <- makeCacheMatrix(x)
+makeCacheMatrix <- function(x = matrix()) {
+    # x and inv.cache have to exist for the <<- assignment operator to work 
+    # properly. Otherwise, inv.cache would get created in the global env when
+    # <<- is called in the set function, below. NULL is a good sentinel to
+    # ensure we don't mistake existance for a cached value.
+    inv.cache <- NULL
+    
+    set <- function(y) {
+        # `<<-` sets the values of x and inv.cache in makeCacheMatrix's
+        # environment and not this function
+        x <<- y
+        inv.cache <<- NULL
     }
-
-    ## Method the get the matrix
-    get <- function() {
-    	## Return the matrix
-    	m
-    }
-
-    ## Method to set the inverse of the matrix
-    setInverse <- function(inverse) {
-        i <<- inverse
-    }
-
-    ## Method to get the inverse of the matrix
-    getInverse <- function() {
-        ## Return the inverse property
-        i
-    }
-
-    ## Return a list of the methods
-    list(set = set, get = get,
-         setInverse = setInverse,
-         getInverse = getInverse)
+    get <- function() x
+    set.inverse <- function(i) inv.cache <<- i
+    get.inverse <- function() inv.cache
+    
+    return (list(set = set, 
+                 get = get,
+                 set.inverse = set.inverse,
+                 get.inverse = get.inverse
+    )
+    )
 }
 
+############
+## cacheSolve checks to see if there is a cached solution then creates it's own 
+## solution if the matrix has changed or there was no solution cached
 
-## Compute the inverse of the special matrix returned by "makeCacheMatrix"
-## above. If the inverse has already been calculated (and the matrix has not
-## changed), then the "cachesolve" should retrieve the inverse from the cache.
-cacheSolve <- function(x, ...) {
+# cacheSolve(z,verbose = FALSE, ...)
+# Description:
+# When passed a makeCacheMatrix value computes its inverse or fetches it from 
+# memory if available.
 
-    ## Return a matrix that is the inverse of 'x'
-    m <- x$getInverse()
+# Arguments:
+# z: the return value from makeCacheMatrix
+# verbose: logical.  If TRUE, messages are printed when calculating or accessing
+#          the cached values.
 
-    ## Just return the inverse if its already set
-    if( !is.null(m) ) {
-            message("getting cached data")
-            return(m)
+# Returns:
+# The inverse of the matrix stored in z
+
+# Usage:
+# > system.time(cacheSolve(z))
+# user  system elapsed 
+# 6.212   0.015   6.225 
+# > system.time(cacheSolve(z))
+# getting cached data
+# user  system elapsed 
+# 0       0       0 
+cacheSolve <- function(z, verbose=FALSE,...) {
+    # attempt to fetch the inverse from cache
+    inverse <- z$get.inverse()   
+    
+    # ... if the inverse exists
+    if(!is.null(inverse)) {
+        
+        if(verbose) message("getting cached data")
+        return(inverse)
+        
+    } else {
+        
+        # otherwise, calculate it once and store it
+        if(verbose) message("caclulating and caching inverse for first time")
+        
+        data <- z$get()
+        inverse <- solve(data, ...)
+        z$set.inverse(inverse)
+        
+        return(inverse)
+        
     }
-
-    ## Get the matrix from our object
-    data <- x$get()
-
-    ## Calculate the inverse using matrix multiplication
-    m <- solve(data) %*% data
-
-    ## Set the inverse to the object
-    x$setInverse(m)
-
-    ## Return the matrix
-    m
 }
